@@ -1,16 +1,16 @@
-[project]
+
+[tool.poetry]
 name = "agentic-design-pattern"
 version = "0.1.0"
 description = ""
-authors = [
-    {name = "TAN PENG",email = "tanpeng8847@gmail.com"}
-]
+authors = ["TAN PENG <tanpeng8847@gmail.com>"]
 readme = "README.md"
-requires-python = ">=3.10"
-dependencies = [
-    "google-adk",
-    "nest-asyncio (>=1.6.0,<2.0.0)"
-]
+
+[tool.poetry.dependencies]
+python = ">=3.10"
+google-adk = "*"
+nest-asyncio = ">=1.6.0,<2.0.0"
+dotenv = "^0.9.9"
 
 
 [build-system]

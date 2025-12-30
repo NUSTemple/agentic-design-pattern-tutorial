@@ -10,7 +10,7 @@ from google.adk.events import Event
 import os
 try:
     from dotenv import load_dotenv
-    # Try loading from current directory first (chapter1/.env)
+    # Try loading from current directory first (chapter2/.env)
     dotenv_path = os.path.join(os.path.dirname(__file__), '.env')
     if os.path.exists(dotenv_path):
         load_dotenv(dotenv_path)
@@ -62,41 +62,51 @@ if VERTEX_LOCATION and not os.environ.get('GOOGLE_CLOUD_LOCATION'):
 
 
 # --- Define Tool Functions ---
-# These functions simulate the actions of the specialist agents.
+# These functions simulate the actions of the specialist agents for customer support.
 
-def booking_handler(request: str) -> str:
+def technical_support_handler(issue: str) -> str:
     """
-    Handles booking requests for flights and hotels. 
-    Args:
-        request (str): The user's request for booking.
-
-    Returns:
-        str: A confirmation message for the booking that the booking was handled.
-    """
-    print("------- Booking Handler Called -------")
-    return f"Booking action for '{request}' has been simulated."
-
-def info_handler(request: str) -> str:
-    """
-    Handles general information requests.
+    Handles technical support requests and troubleshooting.
     
     Args:
-        request (str): The user's request.
+        issue (str): The technical issue description.
+    
     Returns:
-        A message indicating that the information request was handled.
+        str: A response with troubleshooting steps or solution.
     """
-    print("------- Info Handler Called -------")
-    return f"Information request for '{request}'. Result: Simulated information retrieval."
+    print("------- Technical Support Handler Called -------")
+    return f"Technical support for '{issue}': Troubleshooting steps have been provided. Issue logged for tracking."
 
-def unclear_handler(request: str) -> str:
+def billing_handler(inquiry: str) -> str:
     """
-    Handles requests that couldn't be clearly delegated.
+    Handles billing and payment-related inquiries.
+    
+    Args:
+        inquiry (str): The billing inquiry or question.
+    
+    Returns:
+        str: A response with billing information or resolution.
     """
-    return f"Coordinator could not delegate request: '{request}'. Please clarify."
+    print("------- Billing Handler Called -------")
+    return f"Billing inquiry for '{inquiry}': Account information retrieved. Payment status confirmed."
+
+def product_info_handler(question: str) -> str:
+    """
+    Handles product information and feature questions.
+    
+    Args:
+        question (str): The product-related question.
+    
+    Returns:
+        str: A response with product information.
+    """
+    print("------- Product Info Handler Called -------")
+    return f"Product information for '{question}': Detailed product specifications and features provided."
 
 # --- Create Tools ---
-booking_tool = FunctionTool(booking_handler)
-info_tool = FunctionTool(info_handler)
+technical_support_tool = FunctionTool(technical_support_handler)
+billing_tool = FunctionTool(billing_handler)
+product_info_tool = FunctionTool(product_info_handler)
 
 # --- Define specialized sub-agents equipped with their respective tools ---
 # Configure model - use string model name
@@ -107,46 +117,55 @@ info_tool = FunctionTool(info_handler)
 # The Agent's underlying Client will detect these and use Vertex AI automatically
 model_name = "gemini-2.5-flash"
 
-booking_agent = Agent(
-    name="Booker",
+technical_agent = Agent(
+    name="TechnicalSupport",
     model=model_name,
-    description="""A specialist agent that handles all flights 
-                and hotel booking requests by calling the booking tool.""",
-    tools=[booking_tool]
-    )
+    description="""A specialist agent that handles technical support requests, 
+                troubleshooting, and technical issues by calling the technical support tool.""",
+    tools=[technical_support_tool]
+)
 
-info_agent = Agent(
-    name="Info",
+billing_agent = Agent(
+    name="Billing",
     model=model_name,
-    description="""A specialist agent that handles all general information 
-                and answers user questions by calling the info tool.""",
-    tools=[info_tool]
-    )
+    description="""A specialist agent that handles billing inquiries, payment questions, 
+                and account-related financial matters by calling the billing tool.""",
+    tools=[billing_tool]
+)
+
+product_agent = Agent(
+    name="ProductInfo",
+    model=model_name,
+    description="""A specialist agent that handles product information requests, 
+                feature questions, and product specifications by calling the product info tool.""",
+    tools=[product_info_tool]
+)
 
 # --- Define the parent agent with explicit delegation instructions
 root_agent = Agent(
-    name="Coordinator",
+    name="SupportCoordinator",
     model=model_name,
     instruction=(
-        "You are the main coordinator. Your only task is to analyze incoming user requests "
-        "and delegate them to the appropriate specialist agents. Do not try to answer the user directly. \n"
-        "- For any requests related to booking flights or hotels, delegate to the 'Booker' agent. \n "
-        "- For all other general information questions, delegate to the 'Info' agent. \n"
+        "You are a customer support coordinator. Your task is to analyze incoming customer requests "
+        "and delegate them to the appropriate specialist agents. Do not try to answer the customer directly. \n"
+        "- For technical issues, troubleshooting, or technical support requests, delegate to the 'TechnicalSupport' agent. \n"
+        "- For billing inquiries, payment questions, or account financial matters, delegate to the 'Billing' agent. \n"
+        "- For product information, feature questions, or product specifications, delegate to the 'ProductInfo' agent. \n"
     ),
-    description="A coordinator that routes user requests to the correct specialist agent.",
+    description="A customer support coordinator that routes customer requests to the correct specialist agent.",
     # The presence of sub_agents enables LLM-driven delegation (Auto-Flow) by default.
-    sub_agents=[booking_agent, info_agent]
+    sub_agents=[technical_agent, billing_agent, product_agent]
 )
 
 # Expose root_agent at module level
 __all__ = ["root_agent"]
 
 # --- Execute Logic --- 
-async def run_coordinator(runner: InMemoryRunner, request: str):
+async def run_support_coordinator(runner: InMemoryRunner, request: str):
     """
-    Runs the coordinator agent with a given request and delegates.
+    Runs the support coordinator agent with a given request and delegates.
     """
-    print(f"\n --- Running Coordinator for request: '{request}' --- ")
+    print(f"\n --- Running Support Coordinator for request: '{request}' --- ")
     final_result = ""
     
     try:
@@ -177,33 +196,34 @@ async def run_coordinator(runner: InMemoryRunner, request: str):
                     final_result = " ".join(text_parts)
                 # Assume the loop should break after the final response
                 break
-            print(f"Coordinator Final Response: {final_result}")
+            print(f"Support Coordinator Final Response: {final_result}")
             return final_result
     except Exception as e:
-        print(f"An error occurred while processing the your request: {e}")
+        print(f"An error occurred while processing the request: {e}")
         return f"An error occurred while processing your request: {e}"
 
 async def main():
     """Main function to run the ADK example.
     """
-    print("--- Google ADK Routing Example (ADK Auto-Flow Style) ---")
-    print("Note: This requests Google ADK installed and authenticated.")
+    print("--- Google ADK Customer Support Example (ADK Auto-Flow Style) ---")
+    print("Note: This requires Google ADK installed and authenticated.")
     
     runner = InMemoryRunner(root_agent)
     
     # Example Usage
-    result_a = await run_coordinator(runner, "Book me a hotel in Paris.")
+    result_a = await run_support_coordinator(runner, "I can't log into my account. Can you help?")
     print(f"Final Output A: {result_a}\n")
     
-    result_b = await run_coordinator(runner, "What is the highest mountain in the world?")
+    result_b = await run_support_coordinator(runner, "What are the payment options available?")
     print(f"Final Output B: {result_b}\n")
     
-    result_c = await run_coordinator(runner, "Tell me a random fact.")
+    result_c = await run_support_coordinator(runner, "What features does the premium plan include?")
     print(f"Final Output C: {result_c}\n")
     
-    result_d = await run_coordinator(runner, "Find flights to Tokyo next month.")
+    result_d = await run_support_coordinator(runner, "My payment failed. What should I do?")
     print(f"Final Output D: {result_d}\n")
     
 if __name__ == "__main__":
     import asyncio
     asyncio.run(main())
+
